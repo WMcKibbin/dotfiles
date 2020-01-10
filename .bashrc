@@ -123,12 +123,28 @@ alias la='ll -A'           #  Show hidden files.
 alias tree='tree -Csu'    #  Nice alternative to 'recursive ls' ...
 
 PROMPT_COMMAND="prompt_command"
+export TERM=screen-256color
 export PATH=$PATH:~/local/bin/
-export PATH=$PATH:/usr/seos/bin/
+export PATH=$PATH:~/go/bin
+export GOPATH=~/go
+export EDITOR=`which vim`
 alias pstmux="ps aux | grep tmux | grep -v grep"
 alias top5="ps aux | sort -nrk 3,3 | head -n 5"
 alias stats="stat -c '%A %a %n' *"
-alias srp.cp=""
+alias cleos="docker-compose exec keosd /opt/eosio/bin/cleos -H nodeosd"
+alias pacmanOrphans='sudo pacman -Rns $(pacman -Qtdq)'
+alias tmux="tmux -u -2"
+source /usr/share/nvm/init-nvm.sh
+alias crontinfo="echo https://crontab.guru/"
+alias sbvpn='sudo openvpn --config ~/Projects/StrongBlock/vpn/sb-tn-dev_singapore.ovpn --auth-retry interact'
+alias sbvpnops='sudo openvpn --config ~/Projects/StrongBlock/vpn/sb-ops_singapore.ovpn --auth-retry interact'
+alias printjson='python -m json.tool'
+
+function aws_profile
+{
+    alias aws="aws --profile $1"
+}
+
 function trim
 {  
   cat $1 | awk "{\$1=\$1};1"
@@ -141,3 +157,18 @@ function non-utf8()
 {
   iconv -f utf-8 -t utf-8 -c $1
 }
+function fix_internet()
+{
+  sudo modprobe -r brcmfmac
+  sleep 1
+  sudo modprobe brcmfmac
+}
+function cache_clean()
+{
+    paccache -rk $1
+}
+#if [[ ! $(tmux list-sessions) ]] ; then
+if [[ -z ${TMUX+x} ]] ; then
+    tmux
+fi
+archey3 -c cyan
