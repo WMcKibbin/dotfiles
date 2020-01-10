@@ -1,0 +1,102 @@
+#!/bin/bash
+
+# Copyright (c) 2018 W Scott McKibbin
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+# Assume session is 0
+tmux attach-session -t 0
+WINDOW=$(tmux display-message -p "#I")
+
+
+#Preset Container Names
+SERVER_CON_NAME='eos_server'
+WALLET_CON_NAME='eos_wallet'
+TOOLS_CON_NAME='eos_tools'
+
+#Container run commands
+
+SERVER_RUN_CMD='docker run --name eos_server --network=eosnetwork -v ~/Projects/eos:/tmp/eos-workspace -p 7777:7777 -i eosio/eos-dev /bin/bash -c "nodeos -e -p eosio --plugin eosio::wallet_api_plugin --plugin eosio::chain_api_plugin --plugin eosio::http_plugin -d /mnt/dev/data --http-server-address=0.0.0.0:7777 --access-control-allow-origin=* --plugin eosio::history_api_plugin --contracts-console"'
+
+WALLET_RUN_CMD='docker run --name eos_wallet --network=eosnetwork -v ~/Projects/eos:/tmp/eos-workspace -p 5555:5555 -i eosio/eos-dev /bin/bash -c "keosd --http-server-address=0.0.0.0:5555 --unlock-timeout 999999999"'
+
+TOOLS_RUN_CMD='docker run --name eos_tools --network=eosnetwork -v ~/Projects/eos:/tmp/eos-workspace -it devbjune/eosio.cdt /bin/bash'
+
+#Command mapping for running the containers for the first time
+declare -A RUN_CMD_MAP
+RUN_CMD_MAP[$SERVER_CON_NAME]=$SERVER_RUN_CMD
+RUN_CMD_MAP[$WALLET_CON_NAME]=$WALLET_RUN_CMD
+RUN_CMD_MAP[$TOOLS_CON_NAME]=$TOOLS_RUN_CMD
+
+#Container Start commands
+SERVER_START_CMD="docker start --interactive $SERVER_CON_NAME"
+WALLET_START_CMD="docker start --interactive $WALLET_CON_NAME"
+TOOLS_START_CMD="docker start --interactive $TOOLS_CON_NAME"
+
+#Command mapping for starting existing containers with the preset names
+declare -A START_CMD_MAP
+START_CMD_MAP[$SERVER_CON_NAME]=$SERVER_START_CMD
+START_CMD_MAP[$WALLET_CON_NAME]=$WALLET_START_CMD
+START_CMD_MAP[$TOOLS_CON_NAME]=$TOOLS_START_CMD
+
+
+#Iterator
+ITR_NAME=($SERVER_CON_NAME $WALLET_CON_NAME $TOOLS_CON_NAME)
+
+#First fun through we want to use the tmux send-keys command not split-window
+FIRST=1
+
+#Setup with a loop to add more eos containers later on if need be without needing to copy paste
+for NAME in "${ITR_NAME[@]}"
+do
+
+    echo FIRST before is $FIRST
+    TMUX_CMD=""
+    echo FIRST is $FIRST
+
+    #If the Container does not exist we create it, else we run the exiting one
+    TEST=`docker container ls -a -q --filter=name=$NAME`
+    if [[ -z "$TEST" ]]; then 
+        echo Container for $NAME does not yet exist
+        echo Creating a new container for $NAME and starting it...
+        if [[ "$FIRST" -eq "1" ]]; then
+            tmux send-keys "${RUN_CMD_MAP[$NAME]}" Enter 
+        else
+            tmux split-window "${RUN_CMD_MAP[$NAME]}"
+        fi
+    else 
+        echo Container for $NAME exists.
+        echo Starting exisiting container for $NAME...
+        if [[ "$FIRST" -eq "1" ]]; then
+            tmux send-keys "${START_CMD_MAP[$NAME]}" Enter 
+        else
+            tmux split-window "${START_CMD_MAP[$NAME]}"
+        fi
+    fi
+    if [[ "$FIRST" -eq "1"  ]]; then
+        FIRST=0;
+    fi
+    echo "------------------------------------"
+done
+
+tmux select-layout tiled
+
+
+
+

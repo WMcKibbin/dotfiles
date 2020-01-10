@@ -1,0 +1,18 @@
+#!/bin/bash                                                                                                                                                                                                         
+# Assume session is 0
+tmux attach-session -t 0
+WINDOW=$(tmux display-message -p "#I")
+FIRST_ARG=""
+
+for arg in $*; do
+    if [[ $arg != *"%"* ]]; then
+        if [[ $FIRST_ARG == "" ]]; then
+            FIRST_ARG=$arg
+            tmux send-keys "ssh $arg" Enter
+        else
+            tmux split-window "ssh $arg"
+        fi
+        tmux select-layout tiled
+    fi
+done
+tmux set-window-option synchronize-panes on
